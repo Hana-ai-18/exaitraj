@@ -37,7 +37,7 @@ Dữ liệu (7 bộ) tải tự động từ GitHub release của `yupidevs/traj
 ## 3. Chạy phần GPU trên Kaggle (qua GitHub)
 1. Đẩy repo lên GitHub: **không** đẩy `data/`, `cache*/`, `results*/` (đã có `.gitignore`). Gốc repo phải chứa `trajconcept/`, `run.py`, `tests/`, `merge_results.py`, `requirements.txt`.
 2. Tạo notebook Kaggle từ `TrajConcept_Kaggle.ipynb` (tạo lại bằng `python make_notebook.py`): Accelerator **GPU T4 x1**, Internet **On**.
-3. Cell 1: sửa `GIT_URL` thành repo của bạn (repo private cần token trong URL: `https://<token>@github.com/...`).
+3. Cell 1: `GIT_URL` đã trỏ tới `https://github.com/Hana-ai-18/exaitraj.git`. Nếu repo private: tạo token GitHub (quyền đọc nội dung), lưu ở Kaggle Add-ons -> Secrets với tên `GITHUB_TOKEN` và bật cho notebook.
 4. Cell 3: đặt `PRESET = "quick"` để thử một lượt → `"medium"` để đo thời gian → `"full"`.
 5. Chạy tuần tự cell 4 → 10. Hết giờ Kaggle: tải `results_gpu.zip` và `cache_gpu.zip` (cell cuối), upload làm Dataset, mở phiên mới và chạy lại từ cell 1: cell 3 tự khôi phục và bỏ qua phần đã xong.
 6. Muốn gộp kết quả CPU: upload `results_cpu/` (hoặc zip) làm Dataset; cell 10 tự gộp và vẽ hình.

@@ -18,22 +18,36 @@ Mọi cell **chạy lại được và tự tiếp tục**: kết quả lưu t�
 
 md("## 1. Lấy mã từ GitHub")
 code("""import os, sys, glob, subprocess, shutil
-GIT_URL = "https://github.com/YOUR_USER/YOUR_REPO.git"     # <-- ĐỔI thành repo của bạn (repo chứa thư mục trajconcept/, run.py, tests/ ở gốc)
-BRANCH = "main"
+GIT_URL = "https://github.com/Hana-ai-18/exaitraj.git"
+BRANCH = ""          # để trống = nhánh mặc định của repo
 WORK = "/kaggle/working" if os.path.exists("/kaggle/working") else os.path.abspath("./runs")
 os.makedirs(WORK, exist_ok=True); os.chdir(WORK)
-PKG = os.path.join(WORK, "repo")
-if os.path.exists(os.path.join(PKG, ".git")):
-    print(subprocess.run(["git", "-C", PKG, "pull", "--ff-only"], capture_output=True, text=True).stdout)
-elif "YOUR_USER" in GIT_URL:
-    # Phương án dự phòng: gói zip upload làm Kaggle Dataset (hoặc đặt cạnh notebook)
-    zips = glob.glob("/kaggle/input/*/trajconcept_pkg*.zip") + glob.glob("./trajconcept_pkg*.zip")
-    assert zips, "Hãy đổi GIT_URL ở trên, hoặc upload trajconcept_pkg.zip làm Dataset."
-    shutil.unpack_archive(zips[0], WORK); PKG = os.path.join(WORK, "trajconcept_pkg")
+REPO = os.path.join(WORK, "repo")
+
+# Repo private? Tạo token GitHub (quyền đọc nội dung repo) và lưu vào Kaggle: Add-ons -> Secrets -> tên GITHUB_TOKEN, bật cho notebook này.
+url = GIT_URL
+try:
+    from kaggle_secrets import UserSecretsClient
+    tok = UserSecretsClient().get_secret("GITHUB_TOKEN")
+    if tok: url = GIT_URL.replace("https://", f"https://x-access-token:{tok}@")
+except Exception:
+    pass
+
+if os.path.exists(os.path.join(REPO, ".git")):
+    print(subprocess.run(["git", "-C", REPO, "pull", "--ff-only"], capture_output=True, text=True).stdout)
 else:
-    r = subprocess.run(["git", "clone", "--depth", "1", "-b", BRANCH, GIT_URL, PKG], capture_output=True, text=True)
-    assert r.returncode == 0, r.stderr
-assert os.path.exists(os.path.join(PKG, "run.py")), f"Không thấy run.py trong {PKG}"
+    cmd = ["git", "clone", "--depth", "1"] + (["-b", BRANCH] if BRANCH else []) + [url, REPO]
+    r = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+    if r.returncode != 0:
+        msg = r.stderr.replace(url, GIT_URL)
+        raise RuntimeError("git clone lỗi. Nếu repo là private hãy thêm Kaggle Secret GITHUB_TOKEN (xem ghi chú trên cell). Chi tiết: " + msg)
+
+# Tìm thư mục chứa run.py (ở gốc repo hoặc trong một thư mục con, ví dụ trajconcept_pkg/)
+hits = sorted(glob.glob(os.path.join(REPO, "run.py")) + glob.glob(os.path.join(REPO, "*", "run.py")), key=len)
+assert hits, "Không thấy run.py trong repo. Repo cần chứa run.py, trajconcept/, tests/, merge_results.py, requirements.txt (ở gốc hoặc trong 1 thư mục con)."
+PKG = os.path.dirname(hits[0])
+for need in ("trajconcept", "tests", "merge_results.py"):
+    assert os.path.exists(os.path.join(PKG, need)), f"Thiếu {need} trong {PKG}"
 subprocess.run([sys.executable, "-m", "pip", "-q", "install", "requests", "scipy", "scikit-learn", "pandas", "matplotlib"], check=False)
 os.environ["TRAJ_DATA_DIR"] = os.path.join(WORK, "data")
 print("PKG =", PKG, "| WORK =", WORK)""")
