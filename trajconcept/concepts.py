@@ -241,7 +241,7 @@ def student_curve(f: DeepClassifier, v, lat: Latent, X_pool, X_eval, cfg, sizes,
     student_naive = bool(agree_pre <= agree_max)
 
     def train_student(idx, s):
-        stu = DeepClassifier(f.kind, f.C, f.L, f.hidden, str(f.dev), seed=s)
+        stu = DeepClassifier(f.kind, f.C, f.L, f.hidden, str(f.dev), seed=s, rich=getattr(f, "rich", False))
         stu.net.load_state_dict(chosen)
         stu.net.xy_scale.copy_(f.net.xy_scale); stu.net.d_scale.copy_(f.net.d_scale)
         net = stu.net; net.train()

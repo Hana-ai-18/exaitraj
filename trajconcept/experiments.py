@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.stats import spearmanr
 from .config import Config, DEEP
 from .data import load_dataset, TrajSet
-from .pipeline import (get_cell, Cell, mu_and_crt, twin_quality, twin_leak, run_concepts, boot_ci)
+from .pipeline import (usable_flag, get_cell, Cell, mu_and_crt, twin_quality, twin_leak, run_concepts, boot_ci)
 from .models import DeepClassifier
 from .knowledge import compute_K, tier_cols, ALL_NAMES, K0, K1, K2
 from . import explain as ex
@@ -58,6 +58,10 @@ def e1_gate(cfg: Config, S: Store):
                 S.add("e1_gate", rows)
                 _log("E1", ds, bb, seed, {k: round(v, 3) if isinstance(v, float) else v for k, v in chk.items()})
     df = S.load("e1_gate")
+    if not df.empty and {"bacc", "chance", "ece", "gap_train_test"} <= set(df.columns):
+        # tinh lai co `usable` tu cac cot da luu (sua duoc ket qua cu khi tieu chi thay doi)
+        df["usable"] = [usable_flag(b, a, c, e, g, cfg) for b, a, c, e, g in zip(df.bb, df.bacc, df.chance, df.ece, df.gap_train_test)]
+        df.to_csv(S.csv("e1_gate"), index=False)
     if not df.empty:
         agg = df.groupby(["dataset", "bb", "tier"]).agg(
             usable=("usable", "mean"), bacc_f=("bacc_f", "mean"), bacc_g=("bacc_g", "mean"), S_f=("S_f_nll", "mean"),

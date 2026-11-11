@@ -18,6 +18,16 @@ from . import concepts as cc
 
 
 # ------------------------------------------------------------------ tien ich thong ke
+def usable_flag(bb, bacc_, chance, ece_, gap, cfg):
+    """Black box dung duoc khi: bacc >= chance + min_margin, ECE < max_ece, va (CHI voi mang no-ron) do lech train-test < max_gap.
+    RF / k-NN ghi nho tap train (train acc ~ 1) nen 'gap' cua chung chi la 1 - acc test, KHONG phai dau hieu qua khop: khong dung lam dieu kien."""
+    from .config import DEEP
+    ok = (bacc_ >= chance + cfg.min_margin) and (ece_ < cfg.max_ece)
+    if bb in DEEP:
+        ok = ok and (gap < cfg.max_gap)
+    return bool(ok)
+
+
 def boot_ci(d, B=1000, seed=0, alpha=0.05):
     rng = np.random.RandomState(seed)
     d = np.asarray(d, float)
@@ -86,7 +96,7 @@ class Cell:
         ntr = len(self.P_tr_f); acc_tr = (self.P_tr_f.argmax(1) == y[self.tr][:ntr]).mean()
         e = ece(self.P_ho_f, yh)
         chance = 1.0 / self.n_classes                  # do chinh xac CAN BANG ngau nhien = 1/C (khong phai ti le lop da so)
-        ok = (ba >= chance + self.cfg.min_margin) and ((acc_tr - acc_ho) < self.cfg.max_gap) and (e < self.cfg.max_ece)
+        ok = usable_flag(self.bb, ba, chance, e, acc_tr - acc_ho, self.cfg)
         return dict(bacc=ba, acc=float(acc_ho), nll=nll(self.P_ho_f, yh), ece=e, majority=float(maj),
                     chance=float(chance), gap_train_test=float(acc_tr - acc_ho), usable=bool(ok))
 
@@ -151,7 +161,7 @@ def get_gK(cell, cfg):
 
 
 # ------------------------------------------------------------------ cache
-CACHE_FIELDS = ("name", "max_n", "max_len_raw", "epochs", "batch_size", "lr", "hidden", "patience", "gk_budget", "min_margin", "max_gap", "max_ece")
+CACHE_FIELDS = ("deep_rich", "name", "max_n", "max_len_raw", "epochs", "batch_size", "lr", "hidden", "patience", "gk_budget", "min_margin", "max_gap", "max_ece")
 
 
 def _key(cfg, ds, bb, seed):

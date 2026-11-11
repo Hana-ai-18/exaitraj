@@ -39,20 +39,22 @@ def prefeat(x, xy_scale, d_scale):
 
 class SeqNet(nn.Module):
     """Tra ve (logits, [z_layer1, z_layer2, ...]) moi z co dang (B,L,H). Pool trung binh theo thoi gian."""
-    def __init__(self, kind, L, n_classes, hidden=64, n_layers=2, dropout=0.1):
+    def __init__(self, kind, L, n_classes, hidden=64, n_layers=2, dropout=0.1, rich=False):
         super().__init__()
         self.kind, self.L, self.H, self.nl = kind, L, hidden, n_layers
+        self.rich = bool(rich) and kind in ("gru", "lstm", "transformer")       # trajformer da co dac trung toc do/goc re
+        in_dim = 6 if self.rich else 4
         self.register_buffer("xy_scale", torch.tensor(1.0))
         self.register_buffer("d_scale", torch.tensor(1.0))
         if kind in ("gru", "lstm"):
             Rnn = nn.GRU if kind == "gru" else nn.LSTM
-            self.inp = nn.Linear(4, hidden)
+            self.inp = nn.Linear(in_dim, hidden)
             self.rnn = nn.ModuleList([Rnn(hidden, hidden, batch_first=True) for _ in range(n_layers)])
         elif kind in ("transformer", "trajformer"):
             if kind == "trajformer":
                 self.conv = nn.Conv1d(6, hidden, 3, padding=1)    # dac trung cuc bo: +toc do, +goc re
             else:
-                self.inp = nn.Linear(4, hidden)
+                self.inp = nn.Linear(in_dim, hidden)
             self.pos = nn.Parameter(torch.randn(1, L, hidden) * 0.02)
             self.enc = nn.ModuleList([nn.TransformerEncoderLayer(hidden, 4, 2 * hidden, dropout, batch_first=True,
                                                                  norm_first=True) for _ in range(n_layers)])
@@ -64,6 +66,12 @@ class SeqNet(nn.Module):
 
     def forward(self, x, return_z=False):
         f = prefeat(x, self.xy_scale, self.d_scale)
+        if self.rich:                                  # them toc do va goc re: dac trung cuc bo ma mang tho kho tu hoc tu (dx, dy)
+            sp = f[..., 2:4].norm(dim=-1, keepdim=True)
+            ang = torch.atan2(f[..., 3:4], f[..., 2:3])
+            dang = torch.cat([torch.zeros_like(ang[:, :1]),
+                              torch.atan2(torch.sin(ang[:, 1:] - ang[:, :-1]), torch.cos(ang[:, 1:] - ang[:, :-1]))], 1)
+            f = torch.cat([f, sp, dang], -1)
         zs = []
         if self.kind in ("gru", "lstm"):
             h = self.inp(f)
@@ -89,11 +97,11 @@ class SeqNet(nn.Module):
 
 class DeepClassifier:
     """GRU/LSTM/Transformer/TrajFormer-lite. Co: hieu chinh nhiet do, checkpoint tung epoch (cho 'hoc tro' muc 5.7c)."""
-    def __init__(self, kind, n_classes, L, hidden=64, device="auto", seed=0):
-        self.kind, self.C, self.L, self.hidden = kind, n_classes, L, hidden
+    def __init__(self, kind, n_classes, L, hidden=64, device="auto", seed=0, rich=False):
+        self.kind, self.C, self.L, self.hidden, self.rich = kind, n_classes, L, hidden, bool(rich)
         self.dev = get_device(device); self.seed = seed
         seed_all(seed)
-        self.net = SeqNet(kind, L, n_classes, hidden).to(self.dev)
+        self.net = SeqNet(kind, L, n_classes, hidden, rich=rich).to(self.dev)
         self.T = 1.0
         self.ckpts = []                        # [(epoch, state_dict cpu)]
         self.history = []
@@ -185,7 +193,7 @@ class DeepClassifier:
         return F.softmax(self.net(x) / self.T, -1)
 
     def clone_from_state(self, state):
-        m = DeepClassifier(self.kind, self.C, self.L, self.hidden, str(self.dev), self.seed)
+        m = DeepClassifier(self.kind, self.C, self.L, self.hidden, str(self.dev), self.seed, rich=self.rich)
         m.net.load_state_dict(state); m.T = 1.0
         return m
 
@@ -236,7 +244,7 @@ class SklearnRaw:
 def make_blackbox(kind, n_classes, L, cfg, seed):
     if kind in ("rf", "knn"):
         return SklearnRaw(kind, n_classes, seed, n_estimators=200 if cfg.name != "quick" else 80)
-    return DeepClassifier(kind, n_classes, L, cfg.hidden, cfg.device, seed)
+    return DeepClassifier(kind, n_classes, L, cfg.hidden, cfg.device, seed, rich=getattr(cfg, "deep_rich", False))
 
 
 def train_blackbox(kind, X, y, Xv, yv, n_classes, cfg, seed):

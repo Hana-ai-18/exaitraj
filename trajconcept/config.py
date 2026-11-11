@@ -26,6 +26,7 @@ class Config:
     max_len_raw: int = 2000           # cat quy dao qua dai truoc khi lay mau lai
     # --- huan luyen black box
     epochs: int = 30
+    deep_rich: bool = True           # GRU/LSTM/Transformer nhan them toc do va goc re (6 kenh thay vi 4)
     batch_size: int = 128
     lr: float = 2e-3
     hidden: int = 64

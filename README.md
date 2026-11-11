@@ -58,6 +58,7 @@ Hình nào chưa có dữ liệu thì bị bỏ qua, không vẽ hình rỗng.
 * **R = 0** với RF/k-NN ở profile `advisor` (nhiễu nhẹ, mặc định repo của thầy) là bình thường; profile `calibrated` (mạnh hơn) cho R > 0.
 * Bảng in số nguyên không có phần thập phân; cột 1/0 như `usable` là tỉ lệ số lần chạy.
 * `power_ctrl` ở hàng `b=0` là **tỉ lệ báo động nhầm** (phải ≲ 0,05). `power_raw` cao ở b=0 là bình thường (CRT thô không hợp lệ vì twin rò rỉ K).
+* `usable` = bacc ≥ chance + 0,15, ECE < 0,10 và (chỉ với mạng nơ-ron) độ lệch train–test < 0,15. RF/k-NN không bị điều kiện độ lệch vì chúng ghi nhớ tập train (train acc ≈ 1). Dòng `usable` cũ trong `e1_gate.csv` được tính lại mỗi lần chạy E1.
 * Mọi kết luận chỉ dùng cặp (bộ, black box) có `usable=1` (Bảng 1) **và** twin dùng được (Bảng 2). `delta_nll > 0` với `ci_lo > 0` ở `tier=2` mới gọi là "máy hơn thẻ K". Nên chạy ≥ 3 seed trước khi viết bài.
 * `dose_*_ctrl` (thử liều–đáp ứng ở Bảng E5): chỉ tin khi `dose_kdrift_ctrl_max` ≲ 0,5σ.
 
@@ -91,3 +92,14 @@ tests/            test_core, test_pipeline, test_vs_official, crt_fpr (đo FPR),
 * `rdp` hỏng với numpy ≥ 2 chỉ ảnh hưởng `test_vs_official.py` (mã chính dùng bản RDP tự cài).
 * Kaggle không tải được dữ liệu: kiểm tra Internet = On.
 * Twin kém ở một số bộ (ví dụ `animals`: ε_K lớn): Bảng 2 sẽ đánh dấu `usable=0`, bộ đó không dùng để kết luận CRT.
+
+## 9. Thời gian đo được (không phải ước lượng)
+Từ lần chạy `--preset full --stage cpu` trên máy của bạn: huấn luyện g_K (RF) tốn ~9 s (animals), 55–750 s (geolife), 310–420 s (hurdat2), ~770 s (pen digits) **mỗi seed**; k-NN dùng lại g_K đã cache. Với 7 bộ × 5 seed, riêng E1 trên CPU có thể mất nhiều giờ. Nếu cần rút ngắn: `--seeds 0,1,2`, hoặc chạy từng bộ (`--datasets animals`) trên các cửa sổ terminal khác nhau (mỗi cái dùng `--out`/`--cache` riêng rồi gộp bằng `merge_results.py`).
+Trên Kaggle T4, preset `quick`: E3 mất ~52 s mỗi ô (bộ × họ × b × seed); preset `full` nặng hơn nhiều (n_twin, số bước chiếu, B của CRT đều lớn hơn) và có 3 bộ × 2 họ × 5 mức b × 5 seed × 2 black box = 300 ô. **Hãy chạy `medium` trước và nhân lên**; nếu vượt hạn mức GPU thì giảm `--seeds`, `worlds_b` hoặc `worlds_bbs` trong `trajconcept/config.py`.
+
+## 10. Ghi chú v-rich (đầu vào giàu đặc trưng cho mạng sâu)
+`deep_rich=True` (mặc định): GRU/LSTM/Transformer nhận 6 kênh (x, y, dx, dy, tốc độ, góc rẽ) thay vì 4.
+Đo trên world planted b=4 (60 epoch, h=96, Pen Digits): gap(g_K−f) GRU .042→.061, LSTM .009→.026,
+Transformer .024→.061 (freq); world 'where' Transformer −.012→.040. Vẫn chỉ ~25–35% oracle gap
+(oracle freq≈.17, where≈.28) -> mạng sâu vẫn học chưa hết yếu tố cài sẵn; cần chạy preset medium/full để biết.
+Lưu ý: cache cũ không dùng lại được (deep_rich nằm trong CACHE_FIELDS).
