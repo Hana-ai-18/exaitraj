@@ -104,7 +104,7 @@ def e2_twin_quality(cfg: Config, S: Store, gens=("gauss", "flow", "naive"), n_ev
 def _concept_corr_stats(cell, out, h_star, t_star, idx_eval):
     """Rec(h*), precision khai niem, sai so vi tri tren idx_eval (tap kiem tra cuoi)."""
     if not out.get("concepts"):
-        return dict(rec_all=0.0, rec_pass=0.0, concept_precision=float("nan"), loc_err=float("nan"))
+        return dict(rec_all=0.0, rec_rand=float("nan"), rec_pca=float("nan"), rec_pass=0.0, concept_precision=float("nan"), loc_err=float("nan"))
     lat = out["lat"]; X = cell.ts.X[idx_eval]
     Z = lat(X); t0 = int(cell.cfg.t_min_frac * Z.shape[1])
     cors, locs, passes = [], [], []
@@ -117,12 +117,21 @@ def _concept_corr_stats(cell, out, h_star, t_star, idx_eval):
             locs.append(np.abs(th - t_star[idx_eval]).mean() / X.shape[1])
         rec["corr_h"] = float(cr)
     cors = np.array(cors); passes = np.array(passes)
-    return dict(rec_all=float(cors.max()), rec_pass=float(cors[passes].max()) if passes.any() else 0.0,
+    # co so so sanh (cung so huong, cung phep cham diem): huong NGAU NHIEN va cac thanh phan chinh (PCA) cua latent
+    rng = np.random.RandomState(0); k = len(cors); d = Z.shape[2]; hs = h_star[idx_eval]
+    def _c(v):
+        sc = cc.concept_score(Z, v / (np.linalg.norm(v) + 1e-12), "max", t0)
+        return abs(np.corrcoef(sc, hs)[0, 1]) if sc.std() > 0 else 0.0
+    rec_rand = float(np.mean([max(_c(rng.randn(d)) for _ in range(k)) for _ in range(20)]))
+    flat = Z[:, t0:, :].reshape(-1, d); flat = flat - flat.mean(0)
+    pcs = np.linalg.svd(flat[:: max(1, len(flat) // 4000)], full_matrices=False)[2][:k]
+    rec_pca = float(max(_c(v) for v in pcs))
+    return dict(rec_all=float(cors.max()), rec_rand=rec_rand, rec_pca=rec_pca, rec_pass=float(cors[passes].max()) if passes.any() else 0.0,
                 concept_precision=float((cors >= 0.5).mean()), loc_err=float(min(locs)) if locs else float("nan"))
 
 
 def _run_world_cell(cfg, S, ds, fam, b, seed, bb="gru", gen_kind=None, tag="e3_worlds", extra=None, run_loc=False,
-                    source="both", norm="l1", layer=-1, n_init=None):
+                    source="both", norm="l1", layer=-1, n_init=None, concepts=True):
     ts0 = get_ds(ds, cfg)
     y, info = W.make_world(ts0, fam, b, seed)
     if len(np.unique(y)) < 2 or np.bincount(y).min() < 12:
@@ -143,7 +152,7 @@ def _run_world_cell(cfg, S, ds, fam, b, seed, bb="gru", gen_kind=None, tag="e3_w
                detect_raw=bool(det["reject_raw"]), detect_gate=bool(gate["delta_nll_lo"] > 0),
                eps_K=float(np.median(eps[:, 0])))
     # khai niem (chi DeepClassifier)
-    if isinstance(cell.f, DeepClassifier):
+    if concepts and isinstance(cell.f, DeepClassifier):
         idx_d = _cap(cell.disc, 200, seed)
         tw_d, _, _ = cell.make_twins(gen, idx_d, B=min(cfg.n_twin, 12), pool=cfg.twin_pool)
         out = run_concepts(cell, gen, tw_d, idx_d, cfg, tier=2, source=source, norm=norm, layer=layer, n_init=n_init)
@@ -459,6 +468,14 @@ def e8_sanity(cfg: Config, S: Store, bb="gru", n_traj=40):
                     torch.nn.init.normal_(p_, std=0.5) if p_.dim() > 1 else torch.nn.init.zeros_(p_)
                 f2.T = 1.0
                 th_w, _, _ = ex.run_explainers(f2, gen, tw, Xs, cfg_o, "rdp", ["trajconcept", "trajconcept_n"], seed, cfg_fn=cfg_fn)
+                # (iii) Adebayo day du: khoi tao lai MOI lop (mang hoan toan ngau nhien)
+                f3 = copy.copy(cell.f); f3.net = copy.deepcopy(cell.f.net)
+                torch.manual_seed(seed + 5)
+                for mod in f3.net.modules():
+                    if hasattr(mod, "reset_parameters") and mod is not f3.net:
+                        mod.reset_parameters()
+                f3.T = 1.0
+                th_f, _, _ = ex.run_explainers(f3, gen, tw, Xs, cfg_o, "rdp", ["trajconcept", "trajconcept_n"], seed, cfg_fn=cfg_fn)
                 def sp(a, b_):
                     v = [spearmanr(x, y_)[0] for x, y_ in zip(a, b_) if x is not None and y_ is not None and len(x) > 2 and np.std(x) > 0 and np.std(y_) > 0]
                     return float(np.nanmean(v)) if v else float("nan")
@@ -466,7 +483,7 @@ def e8_sanity(cfg: Config, S: Store, bb="gru", n_traj=40):
                 crt_s = mu_and_crt(cs, ts.X[idx_ho], ts_s.y[idx_ho], tw2, cfg.alpha)
                 for m in ("trajconcept", "trajconcept_n"):
                     S.add("e8_sanity", dict(dataset=ds, seed=seed, bb=bb, method=m, spearman_label_shuffle=sp(th_real[m], th_s[m]),
-                                            spearman_weight_random=sp(th_real[m], th_w[m]), crt_p_shuffled=crt_s["p_value"],
+                                            spearman_weight_random=sp(th_real[m], th_w[m]), spearman_full_random=sp(th_real[m], th_f[m]), crt_p_shuffled=crt_s["p_value"],
                                             crt_reject_shuffled=crt_s["reject"], acc_shuffled=float((cs.pf(ts.X[cs.ho]).argmax(1) == ts_s.y[cs.ho]).mean())))
                 _log("E8", ds, seed, "ok")
             _safe(run)

@@ -103,3 +103,11 @@ Trên Kaggle T4, preset `quick`: E3 mất ~52 s mỗi ô (bộ × họ × b × s
 Transformer .024→.061 (freq); world 'where' Transformer −.012→.040. Vẫn chỉ ~25–35% oracle gap
 (oracle freq≈.17, where≈.28) -> mạng sâu vẫn học chưa hết yếu tố cài sẵn; cần chạy preset medium/full để biết.
 Lưu ý: cache cũ không dùng lại được (deep_rich nằm trong CACHE_FIELDS).
+
+## 11. Kiểm chứng phương pháp (verify.py)
+`python verify.py --smoke --out v_smoke --cache c_smoke` (thử script, CPU, ~2 phút, KHÔNG kết luận) rồi notebook `TrajConcept_Verify.ipynb`
+(hoặc `python verify.py --out verify_out --cache verify_cache --budget-hours 8` trên T4; chạy lại để tiếp tục).
+Ra `claims.csv` / `claims.md`: PASS / FAIL / INCONCLUSIVE cho 6 tuyên bố (ngưỡng đặt trước trong `trajconcept/claims.py::THRESH`).
+Thứ tự: null (C1) -> worlds (C2, C3) -> e1 (C5) -> e8 (C4) -> e5 (C5) -> e4, e4w (C6). Phương pháp chính của C4/C6 là `trajconcept_n`
+(chốt trước khi chạy; `trajconcept` thô chỉ là INFO). INCONCLUSIVE không phải PASS: ví dụ C5 trên Pen Digits có thể INCONCLUSIVE vì K đã đủ.
+Thời gian ~4-6 giờ T4 là ƯỚC LƯỢNG chưa đo.

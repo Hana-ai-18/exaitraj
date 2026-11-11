@@ -78,6 +78,7 @@ class Config:
     worlds_b: List[float] = field(default_factory=lambda: [0.0, 1.0, 2.0, 4.0])
     worlds_families: List[str] = field(default_factory=lambda: ["freq", "where"])
     crt_B: int = 99
+    null_seeds: List[int] = field(default_factory=list)   # seed them chi cho the gioi RONG (b=0) de do ti le bao sai
     alpha: float = 0.05
     # --- dieu kien toi thieu cho black box (muc 7.3)
     min_margin: float = 0.15
@@ -129,4 +130,22 @@ def medium() -> Config:
     return c
 
 
-PRESETS = {"quick": quick, "medium": medium, "full": kaggle_t4}
+def verify() -> Config:
+    """'Cell manh' de KIEM CHUNG phuong phap (Pen Digits, GRU + Transformer). Chay bang verify.py, ~4-6 gio tren T4."""
+    c = kaggle_t4()
+    c.name = "verify"; c.seeds = [0, 1, 2]; c.datasets = ["uci_pen_digits"]; c.black_boxes = ["gru", "transformer"]
+    c.max_n = 8000; c.epochs = 80; c.hidden = 96; c.patience = 10; c.gk_budget = 3
+    c.worlds_datasets = ["uci_pen_digits"]; c.worlds_bbs = ["gru", "transformer"]; c.worlds_b = [0.0, 2.0, 4.0, 8.0]
+    c.flow_steps = 1500; c.twin_proj_steps = 150; c.bootstrap_B = 500; c.n_explain = 80; c.e4_n = 40; c.lp_max_pairs = 40
+    c.null_seeds = list(range(3, 27))            # + seed 0..2 => 27 lan chay the gioi rong cho GRU
+    return c
+
+
+def verify_smoke() -> Config:
+    """Kiem tra verify.py chay duoc (CPU, vai phut) - KHONG dung de ket luan."""
+    c = quick(); c.name = "verify_smoke"; c.black_boxes = ["gru"]; c.worlds_bbs = ["gru"]; c.worlds_b = [0.0, 4.0]
+    c.worlds_families = ["where"]; c.null_seeds = [1, 2]; c.max_n = 800; c.epochs = 4
+    return c
+
+
+PRESETS = {"verify": verify, "verify_smoke": verify_smoke, "quick": quick, "medium": medium, "full": kaggle_t4}
