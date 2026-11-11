@@ -1,0 +1,17 @@
+dataset,bb,seed,concept,cond,n,agree,agree_sd
+uci_pen_digits,gru,0,0,concept@random_pos,10,0.2083333333333333,0.0168358757425368
+uci_pen_digits,gru,0,0,concept@random_pos,50,0.2738095238095238,0.0084179378712684
+uci_pen_digits,gru,0,0,random_samples@random_pos,10,0.2857142857142857,0.0583211843519804
+uci_pen_digits,gru,0,0,random_samples@random_pos,50,0.3333333333333333,0.0890870806374748
+uci_pen_digits,gru,0,0,random_vector@random_pos,10,0.375,0.0
+uci_pen_digits,gru,0,0,random_vector@random_pos,50,0.375,0.0
+uci_pen_digits,gru,0,0,probe_K@random_pos,10,0.25,0.0
+uci_pen_digits,gru,0,0,probe_K@random_pos,50,0.25,0.0
+uci_pen_digits,gru,0,0,concept,10,0.5059523809523809,0.0222717701593686
+uci_pen_digits,gru,0,0,concept,50,0.613095238095238,0.0084179378712684
+uci_pen_digits,gru,0,0,random_samples,10,0.3452380952380953,0.0878858515490083
+uci_pen_digits,gru,0,0,random_samples,50,0.25,0.0291605921759902
+uci_pen_digits,gru,0,0,random_vector,10,0.2678571428571428,0.0
+uci_pen_digits,gru,0,0,random_vector,50,0.2678571428571428,0.0
+uci_pen_digits,gru,0,0,probe_K,10,0.2857142857142857,0.0
+uci_pen_digits,gru,0,0,probe_K,50,0.2857142857142857,0.0

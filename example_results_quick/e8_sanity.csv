@@ -1,0 +1,3 @@
+dataset,seed,bb,method,spearman_label_shuffle,spearman_weight_random,crt_p_shuffled,crt_reject_shuffled,acc_shuffled
+uci_pen_digits,0,gru,trajconcept,0.4487468671679198,0.6088972431077695,0.6,False,0.0901098901098901
+uci_pen_digits,0,gru,trajconcept_n,-0.0486215538847117,0.330764411027569,0.6,False,0.0901098901098901

@@ -1,0 +1,3 @@
+dataset,family,b,seed,bb,method,relevant_mass_ratio,iou_topk,leak_overlap,n
+uci_pen_digits,where,4.0,0,gru,trajconcept,1.2553582974979858,0.2,0.9463328647900427,20
+uci_pen_digits,where,4.0,0,gru,trajconcept_n,1.1308666293048382,0.15,0.9478611535274368,20

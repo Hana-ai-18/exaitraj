@@ -1,0 +1,4 @@
+dataset,bb,delta_lo,delta,usable,C2ST,eps_K,lp_feasible,cand,final,main_cause
+uci_pen_digits,gru,-1.1025013511993451,-0.928783737703518,1.0,0.5391304347826087,0.4134823596294276,0.775,2.0,0.0,no knowledge gap (95% CI of delta includes 0)
+uci_pen_digits,knn,-0.0751537619876993,-0.0150926070701158,1.0,0.5391304347826087,0.4134823596294276,,,,no knowledge gap (95% CI of delta includes 0)
+uci_pen_digits,rf,-0.0822362161624523,-0.012429779527528,1.0,0.5391304347826087,0.4134823596294276,,,,no knowledge gap (95% CI of delta includes 0)

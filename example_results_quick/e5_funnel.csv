@@ -1,0 +1,2 @@
+dataset,bb,seed,usable,delta_R,delta_R_lo,gate_pass,time_s,funnel_candidates,funnel_useful,funnel_novel,funnel_teachable,funnel_not_shortcut,funnel_all,lp_n_lp,lp_n_ok,lp_feasible_rate,lp_mean_slack
+uci_pen_digits,gru,0,True,-0.928783737703518,-1.1025013511993451,False,9.148229837417604,2,1,0,0,0,0,40,40,0.775,0.0062954234421231
